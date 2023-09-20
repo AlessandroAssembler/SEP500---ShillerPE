@@ -1,0 +1,764 @@
+---
+title: "MagicFormula"
+author: "J"
+date: "28/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+To better comment the result we will use the package "rmarkdown".
+
+```{r}
+if (!require(rmarkdown)){
+  install.packages("rmarkdown")
+  library(rmarkdown)
+}
+```
+
+
+-----------------------------------------------------------------
+
+"Part I: \Magic Formula" Investing"
+
+Let's define the working directory.
+
+```{r}
+setwd("C:/Users/admin/Desktop/Assignment Jasmine -")
+```
+
+### 1. Let's consider the dataset `Fundamentals_Annual.csv`.Is the dataset in long or in wide format? Why do you think the data provider opts for this choice of data format? 
+
+The Fundamentals Annual.csv dataset from Compustat contains accounting information, such as balance sheet and income statement variables between 1950 and 2021.
+
+The Dataset is arranged in long format in order to report for every observation in time each variables enter. In long vertical format, every row represents an observation belonging to a particular category.
+
+```{r}
+data = read.csv("Fundamentals_Annual.csv", header = TRUE)
+datadate = data[1:313388,1]
+N = length(datadate)
+```
+
+
+### 2. Fiscal year ending month
+
+The share of companies which has a fiscal year that ends Dec 31st is 0.6326375.
+
+```{r}
+endate<- numeric(N)
+for(i in 1:N) {
+endate[i] = substr(datadate[i], 5,6)
+}
+Month <- as.numeric(endate) 
+Newdata = cbind(Month,data)
+
+Dec = length(which(endate == "12"))
+ShareDec = Dec/N
+print(ShareDec)
+Nov = length(which(endate == "11"))
+ShareNov = Nov/N
+Oct= length(which(endate == "10"))
+ShareOct = Oct/N
+Sep = length(which(endate == "09"))
+ShareSep = Sep/N
+Aug = length(which(endate == "08"))
+ShareAug = Aug/N
+Jul= length(which(endate == "07"))
+ShareJul = Jul/N
+Jun = length(which(endate == "06"))
+ShareJun = Jun/N
+May = length(which(endate == "05"))
+ShareMay = May/N
+Apr= length(which(endate == "04"))
+ShareApr = Apr/N
+Mar = length(which(endate == "03"))
+ShareMar= Mar/N
+Feb = length(which(endate == "02"))
+ShareFeb = Feb/N
+Jan= length(which(endate == "01"))
+ShareJan= Jan/N
+MonthFreq = c(Jan,Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec)
+barplot(MonthFreq,
+main = "Ending Month of the Fiscal Year",
+xlab = "Months",
+ylab = "Freuency",
+names.arg = c("Jan","Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+col = "darkmagenta")
+```
+
+### 3. Selection of the companies with a fiscal year ending Dec 31st
+
+```{r}
+DataDec <- subset(Newdata, Month==12)
+```
+
+### 4. Selection of the companies with a currency "USD"
+
+```{r}
+DataDecUSD <- subset(DataDec, curncd =="USD")
+```
+
+### 5. Selection of the companies non ADR
+
+```{r}
+DataDecUSDna <- DataDecUSD [is.na(DataDecUSD$adrr),] 
+```
+
+### 6. Selection of the companies' variables
+
+```{r}
+DataDecUSDna$Month <- NULL
+DataDecUSDna$tic <- NULL
+DataDecUSDna$cusip <- NULL
+DataDecUSDna$tic <- NULL
+DataDecUSDna$curncd <- NULL
+DataDecUSDna$adrr <- NULL
+```
+
+### 7. Remove Financial (SIC code from 6000-6999) and utility firms (SIC code 4900-4999).
+
+```{r}
+DataSelect <- DataDecUSDna[which( DataDecUSDna$sic>=0 & DataDecUSDna$sic<4900 | DataDecUSDna$sic>4999 & DataDecUSDna$sic<6000 |DataDecUSDna$sic>6999), ]
+```
+
+### 8. Check for missing values using an apply or map function. For each variable, the output should indicate whether there are missing values, and if so how many.
+
+```{r}
+apply (is.na(DataSelect),2,sum)
+```
+
+### 9. Remove rows with missing values.
+
+```{r}
+DataSelect1 <- na.omit(DataSelect)
+```
+
+### 10. Create new variables called "market capitalization", "return on capital" and earnings yield":
+
+```{r}
+Market_Cap = DataSelect1$csho * DataSelect1$prcc_f
+Return_on_Cap  = DataSelect1$ebit/(DataSelect1$act - DataSelect1$lct + DataSelect1$ppent)
+Earnings_Yield = DataSelect1$ebit/(Market_Cap  + DataSelect1$pstkrv + DataSelect1$dltt + DataSelect1$dlc - DataSelect1$che)
+Dataplus = cbind(DataSelect1, Market_Cap, Return_on_Cap, Earnings_Yield)  
+```
+
+### 11. Remove rows with missing values. What do you think caused these missing values?
+
+The missing values are caused by a problem in the return on capital variable, since it is not possible to divide a 0 EBIT if the denominator (the capital) is equal to zero. In particular we will have - inf in case of dividing a negative EBIT by a zero Cap, +inf if we divide a positive EBIT by a zero Cap and NaN if we divide a null EBIT by a null Cap.
+
+```{r}
+apply (is.na(Dataplus),2,sum)
+Dataplus1 <- na.omit(Dataplus)
+```
+
+### 12. What was the market capitalization for \General Motors" in 2020?
+
+The market capitalization for "General Motors" in 2020 was 58.296 millions of dollars.
+
+```{r}
+GM_MKTCAP <- subset(Dataplus1$Market_Cap, Dataplus1$conm == "GENERAL MOTORS CO" & Dataplus1$datadate == "20201231")
+print(GM_MKTCAP)
+```
+
+### 13. What is the unit of measurement for the market capitalization variable? 
+
+The unit of measurement for the Market Capitalization is the million of dollars (as well for the other "big value" variables of the dataframe).
+ 
+### 14. Remove rows with small market capitalization, i.e. all company-year observations with a market capitalization below USD 100 million.
+
+```{r}
+DataBigcap <- Dataplus1[which( Dataplus1$Market_Cap>=100 ), ]
+```
+
+### 15. Load the Security Monthly.csv.le.
+
+```{r}
+dataMonthly = read.csv("Security_Monthly.csv", header = TRUE)
+```
+
+### 16. Select relevant variables from Security Monthly, these include datadate," LPERMNO," and "Monthly Total Return"
+
+```{r}
+dataMonthly$prccm <- NULL
+```
+
+### 17. What is the unit of measurement for the monthly total return variable?
+
+The monthly total return is clearly expressed in percentage points change per month.
+We checked for some values for the GM company in 2021 with Yahoo Finance.
+
+```{r}
+GM_LPERMNO <- subset(Dataplus1$LPERMNO, Dataplus1$conm == "GENERAL MOTORS CO" & Dataplus1$datadate == "20201231")
+print(GM_LPERMNO)
+GM_TRT <- subset(dataMonthly$trt1m, dataMonthly$LPERMNO == "12369" & dataMonthly$datadate == "20210531")
+print(GM_TRT)
+```
+
+### 18. Transfer the monthly total return variable to the same scale as the return on capital and earnings yield variables in the prior dataset.
+
+Since the earning yield was expressed in decimals change over a period of time of one year we need to obtaine the decimal value of the monthly return.
+
+```{r}
+dataMonthly1 <- dataMonthly
+dataMonthly1$trt1m <- dataMonthly1$trt1m/100
+```
+
+### 19. Merge the monthly total return variable from the Security Monthly dataset to the Fundamentals Annual dataset
+
+```{r}
+DataMergeNa <- merge(x = DataBigcap, y = dataMonthly1, all.x = TRUE)
+```
+
+### 20. Remove rows with missing values and drop the monthly total return variable again.
+
+```{r}
+DataMerge <- na.omit(DataMergeNa)
+DataMerge$trt1m<- NULL
+```
+
+### 21. Create a line chart of number of companies each year over time using ggplot.
+
+```{r}
+require(dplyr)
+NumberCompanies <-DataMerge %>% count(DataMerge$datadate)
+Years <- 1962:2020
+library(ggplot2)
+ggplot(NumberCompanies, aes(x=Years, y = NumberCompanies$n )) + geom_line()
+```
+
+### 22. How many unique companies are in our dataset?
+
+The unique companies in the dataset are 1349
+
+```{r}
+UniqueCompanies <- DataMerge %>% count(DataMerge$LPERMNO)
+print(UniqueCompanies)
+NumberUniqueCompanies <- length(which(UniqueCompanies$n == 1))
+print(NumberUniqueCompanies)
+```
+
+### 23. "thicken" the monthly date in Fundamentals Annual database for ease of handling, i.e. turn the integer 20201231 into the date format "2020-12-31" and then use "thicken" from R-package "padr" that turns this into "2020-12-01."
+
+To do this task we've found an alternative easy way with the standard R package.
+
+```{r}
+DataMergeThick <- transform(DataMerge, datadate = as.Date(as.character(datadate), "%Y%m%d"))
+DataMergeThick$datadate <- as.Date(sub("\\d{2}$", "01", DataMergeThick$datadate ))
+```
+
+### 24. For each end-of-year ranging from "1962-12-31" to "2018-12-31" (57 years) create a selection of 30 stocks that we will invest into for 12 months (our holding period) after which we sell them. To create this selection of 30 stocks, we apply the double sorting methodology from the book "The Little Book hat Beats the Market," i.e. each year we first choose the 100 stocks with the highest return on capital and then from this list we select the 30 stocks with the highest earnings yield (this is known as the "magic formula").
+
+```{r}
+library(dplyr)
+DataDec <- subset(Newdata, Month==12)
+DataMergeThick1 <- subset(DataMergeThick, datadate !=	"2020-12-01" & datadate!=	"2019-12-01" )
+TopROC <-DataMergeThick1 %>%
+  group_by(datadate) %>%
+  slice_max(order_by = Return_on_Cap,n=100)
+TopROC1 <- TopROC
+Top.EY <-TopROC1 %>%
+  group_by(datadate) %>%
+  slice_max(order_by = Earnings_Yield,n=30)
+Top.magicportfolio <- Top.EY
+Top.magicportfolio$conm <-NULL
+Top.magicportfolio$ebit <-NULL
+Top.magicportfolio$act <-NULL
+Top.magicportfolio$lct <-NULL
+Top.magicportfolio$ppent <-NULL
+Top.magicportfolio$csho <-NULL
+Top.magicportfolio$prcc_f <-NULL
+Top.magicportfolio$dltt <-NULL
+Top.magicportfolio$dlc <-NULL
+Top.magicportfolio$pstkrv <-NULL
+Top.magicportfolio$che <-NULL
+Top.magicportfolio$sic <-NULL
+Top.magicportfolio$Market_Cap <-NULL
+Top.magicportfolio$Return_on_Cap <-NULL
+Top.magicportfolio$Earnings_Yield <-NULL
+library(lubridate)
+Dates <- seq(ymd("1963-06-01"), ymd("2020-05-01"), by = "months")
+datadate <- as.Date(x = integer(0), origin = "1963-06-01")
+for(i in 0:56) {
+datadate[(1+i*360):(i*360+360)] <- rep(Dates[(1+i*12):(i*12+12)], times =30)
+}
+LPERMNO <-rep(Top.magicportfolio$LPERMNO,each=12)
+LPERMNO <- as.data.frame(LPERMNO)
+Magic.Portfolio <- cbind(datadate, LPERMNO )
+```
+
+### 25. "thicken" the monthly date in the Security Monthly database because we need to left join it to our magic formula portfolio that are already in that date format.
+
+```{r}
+dataMonthlyThick <- transform(dataMonthly1, datadate = as.Date(as.character(datadate), "%Y%m%d"))
+dataMonthlyThick$datadate <- as.Date(sub("\\d{2}$", "01", dataMonthlyThick$datadate ))
+```
+
+### 26. Join the Security Monthly database to your magic formula portfolio (magic formula portfolio left join Security Monthly).
+
+```{r}
+Magic.Portfolio.merge <- merge(x = Magic.Portfolio, y = dataMonthlyThick ,all.x = TRUE)
+```
+
+### 27. Replace NA returns in your magic formula portfolio with zero. NA returns can be due to the company going out of business in the future or getting merged with another company.
+
+```{r}
+Magic.Portfolio.merge[is.na(Magic.Portfolio.merge)] <- 0
+```
+
+
+### 28. Generate portfolio returns for your magic formula portfolio, i.e. for each month take the mean of your 30 magic formula portfolio stocks' return.
+
+```{r}
+p<-length(Magic.Portfolio.merge$datadate)
+Portfolio.returns.mean <- numeric(p)
+P.r.m <- numeric(683)
+for( i in 0:683)
+{
+Portfolio.returns.mean[(i+1)*30] <- mean(Magic.Portfolio.merge$trt1m[(i*30+1): ((i+1)*30)])
+}
+for( i in 0:683)
+{
+P.r.m[(i+1)] <- mean(Magic.Portfolio.merge$trt1m[(i*30+1): ((i+1)*30)])
+}
+
+Magic.Portfolio.merge.mean <-cbind (Magic.Portfolio.merge, Portfolio.returns.mean)
+```
+
+### 29. Create a function "return2index" that takes as input a return vector "x" and an additional argument "base" with a preset value of 100. This function should give you cumulated indexed portfolio returns, i.e. if your return vector x has the following values: c(0.05, -0.01, 0.03) the output of the function should be a vector c(100.0000, 105.0000, 103.9500, 107.0685).
+
+```{r}
+return2index <- function(av.ret) {
+  av.ret <- as.numeric(av.ret)
+  base<-100
+  f<-length(av.ret)
+ b <- numeric(f+1)
+ b[1] <- base
+ for( i in 2:(f+1))
+{
+ b[i] <- b[i-1]*(1+av.ret[i-1])
+   }
+  return(b)
+}
+```
+
+### 30. Create a line plot of your cumulated indexed magic formula portfolio returns using ggplot (starting the portfolio on 1963-05-31, 1963-05-01 in the "thicken'd" format, with an index value of 100).
+
+```{r}
+Portfolio <- return2index(av.ret = P.r.m)
+Portfolio <- as.data.frame(Portfolio)
+caldt <- seq(ymd("1963-05-01"), ymd("2020-05-01"), by = "months")
+Portfolio <- cbind(caldt, Portfolio)
+ggplot (Portfolio, aes(x=caldt, y = Portfolio )) + geom_line()
+```
+
+### 31. Load the CRSP Index File on the SP 500.csv file.
+
+```{r}
+dataSP500 = read.csv("CRSP_Index_File_on_the_SP_500.csv", header = TRUE)
+```
+
+### 32. Select the "caldt" and "Value-Weighted Return (includes distributions)" variables from the CRSP Index File on the SP 500 database (check the codebook for the variable name).
+
+```{r}
+dataSP500$vwretx<-NULL
+dataSP500$ewretd<-NULL
+dataSP500$ewretx<-NULL
+dataSP500$totval<-NULL
+dataSP500$totcnt<-NULL
+dataSP500$usdval<-NULL
+dataSP500$usdcnt<-NULL
+dataSP500$spindx<-NULL
+dataSP500$sprtrn<-NULL
+```
+
+### 33. "thicken" the monthly date in the CRSP Index File on the SP 500 database, because we need to left join it to our magic formula portfolio returns that are already in that date format.
+
+```{r}
+dataSP500Thick <- transform(dataSP500, caldt = as.Date(as.character(caldt), "%Y%m%d"))
+dataSP500Thick$caldt <- as.Date(sub("\\d{2}$", "01", dataSP500Thick$caldt ))
+```
+
+### 34. Join the CRSP Index File on the SP 500 database to your magic formula portfolio returns (magic formula portfolio returns left join CRSP Index File on the SP 500).
+
+```{r}
+ SP500.MagicPortfolio <- merge(x = Portfolio, y = dataSP500Thick  ,all.x = TRUE)
+```
+
+### 35. Create a comparison line plot (2 groups) between your cumulated indexed returns from the magic formula portfolio and the S&P 500 returns using ggplot (time series starts 1963-05-01 in the \thicken'd" format with an index value of 100).
+
+```{r}
+SP500index <- return2index(av.ret = SP500.MagicPortfolio$vwretd[2:685])
+SP500.Magic <- cbind(SP500.MagicPortfolio,  SP500index )
+p <-ggplot ( SP500.Magic, aes(x=caldt)) + geom_line(aes(y = Portfolio ),color="darkred")+geom_line (aes(y =SP500index ),color="darkblue")
+p + ggtitle("SP500 (b) VS Magic Portfolio (r) cumulated indexed returns (6 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+```
+
+### 36. Calculate the annualized arithmetic mean (mean of monthly returns times 12), the annualized standard deviation (standard deviation of monthly returns times the square root of 12), and the sharpe ratio assuming a risk free return of zero (annualized mean divided by annualized standard deviation). What do you conclude? Which portfolio do you prefer?
+
+As we have seen also in the previous graphs, the cumulated indexed returns of the magic portfolio seems to outperform largely the SP500. In fact the annualized arithmetic mean of the returns of the Magic Portfolio seems to be often higher. 
+On the other hand we can also observe that the annualized standard deviation of this portfolio seems to be higher than the one of the SP500. This lead to a sharpe ratio which is often higher for the SP500. 
+This facts suggest to us that our bet on buying the best performer of the previous year in terms of return on capital and earning yield ensures us an higher annualized arithmetic mean of the returns, but this comes at a cost, which is to hold a portfolio which has an higher annualized standard deviation. 
+So basically this portfolio is not beating the market if we consider its performance adjusted for the risk, but it seems that he is simply taking additional risk in terms of standard deviation, which of course should guarantee higher returns.
+
+Having said that we should prefer the portfolio with the higher sharpe ratio, which seems to be the SP500.
+
+```{r}
+years <- seq(ymd("1963-06-01"), ymd("2019-06-01"), by = "years")
+SP500.monthly <- SP500.MagicPortfolio$vwretd[2:685]
+annualized.arithmetic.mean.SP500 <- numeric(57)
+annualized.arithmetic.mean.Magic <- numeric(57)
+annualized.st.dev.SP500<- numeric(57)
+annualized.st.dev.Magic<- numeric(57)
+annualized.sharpe.ratio.SP500<- numeric(57)
+annualized.sharpe.ratio.Magic<- numeric(57)
+for( i in 0:56)
+  {
+annualized.arithmetic.mean.SP500[i+1] <- mean(SP500.monthly[(1+(i*12)):((i+1)*12)])*12
+annualized.arithmetic.mean.Magic[i+1] <- mean(P.r.m[(1+(i*12)):((i+1)*12)])*12
+annualized.st.dev.SP500[i+1] <- sd(SP500.monthly[(1+i*12):((i+1)*12)])*sqrt(12)
+annualized.st.dev.Magic[i+1] <-  sd(P.r.m[(1+i*12):((i+1)*12)])*sqrt(12)
+annualized.sharpe.ratio.SP500[i+1] <- annualized.arithmetic.mean.SP500[i+1]/ annualized.st.dev.SP500[i+1]
+annualized.sharpe.ratio.Magic[i+1] <- annualized.arithmetic.mean.Magic[i+1]/annualized.st.dev.Magic[i+1]
+}
+
+annualized.arithmetic.mean.SP500 <- as.data.frame(annualized.arithmetic.mean.SP500)
+SP500vsMagic <- cbind (years, annualized.arithmetic.mean.SP500, annualized.arithmetic.mean.Magic,annualized.st.dev.SP500, annualized.st.dev.Magic, annualized.sharpe.ratio.SP500, annualized.sharpe.ratio.Magic)
+
+Sharpe.ratio.mean.SP500 <- mean(SP500vsMagic$annualized.sharpe.ratio.SP500)
+Sharpe.ratio.mean.Magic <- mean(SP500vsMagic$annualized.sharpe.ratio.Magic)  
+
+Sharpe.ratio.mean.SP500 
+Sharpe.ratio.mean.Magic 
+
+r <-ggplot ( SP500vsMagic, aes(x=years)) + geom_line(aes(y = annualized.arithmetic.mean.Magic),color="darkred")+geom_line (aes(y = annualized.arithmetic.mean.SP500),color="darkblue")
+r + ggtitle("SP500 (b) VS Magic Portfolio (r) annualized arithmetic mean of returns (6 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+s <-ggplot ( SP500vsMagic, aes(x=years)) + geom_line(aes(y = annualized.st.dev.Magic),color="darkred")+geom_line (aes(y = annualized.st.dev.SP500),color="darkblue")
+s + ggtitle("SP500 (b) VS Magic Portfolio (r) annualized astandard deviation of returns (6 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+q <-ggplot ( SP500vsMagic, aes(x=years)) + geom_line(aes(y = annualized.sharpe.ratio.Magic),color="darkred")+geom_line (aes(y = annualized.sharpe.ratio.SP500),color="darkblue")
+q + ggtitle("SP500 (b) VS Magic Portfolio (r) annualized sharpe ratio (6 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+```
+
+### 37. What is the percentage of months that the magic formula portfolio strategy outperformed the S&P 500?
+
+The percentage of months that the magic formula portfolio strategy outperformed the S&P 500 in terms of higher monthly returns is 51.16959%.
+
+```{r}
+percentage.Magic.outperforming.SP500 <-(sum(P.r.m> SP500.monthly)/length(P.r.m))*100
+percentage.Magic.outperforming.SP500
+```
+
+### 38. What additional obstacles/factors could impair the performance of your magic formula portfolio strategy?
+
+As we said before the good performance of the magic portfolio will cost us additional risk in terms of standard deviation of our portfolio.
+Additionally the magic formula portfolio strategy must face additional costs and risks with respect to the buy and hold strategy on the SP500.
+On one hand we should rebalance our portfolio every year and this can be done only paying fees to the trading platforms. On the other hand we should take into account that we are only investing in 30 companies (less diversification) and we don't know if their stocks will be liquid and easily traded at the time that we want to rebalance our portfolio, even if by selecting only big firms as we made should cover us a little bit from this risk. Moreover we are not sure that the balance sheets on which we base our strategy report always correct information (sometimes they can be manipulated or adjusted).
+
+### 39. Redo your analysis but instead of waiting 5 months until investing (i.e. starting the portfolio on 1963-05-31, 1963-05-01 in the "thicken'd" format) already start investing 3 months after the end of the company's fiscal year (i.e. start your portfolio on 1963-03-31, 1963-03-01 in the "thicken'd" format). What do you observe? What do you conclude from this observation?
+
+As we can see in the charts, this new strategy outperforms largely the SP500, more than the previous one. In fact both the annualized arithmetic mean of the returns and the standard deviation of this new Magic Portfolio seems to be always higher than the previous strategy and of course of the SP500. 
+Anyway, in this case, the annual sharpe ratio seems to be more close to the one of the SP500 (overall mean during the investment period period: 6 months lag ->  0.94, 3 months lag -> 1.017, SP500 -> 1.042/1.052). 
+This facts suggest to us that our new bet is catching better the "good performing momentum", because on one hand we are increasing our portfolio returns as well as the standard deviation with respect to the previous strategy, but this time having a better sharpe ratio (mostly due to the higher annualized returns of the new strategy).
+This fact is also confirmed by the percentage of months that the magic formula portfolio strategy outperformed the S&P 500 in terms of higher monthly returns which passed from 51.16959% to 52.77778%.
+So basically also this portfolio is not beating the market if we consider its performance adjusted for the risk, but it seems that it has at least improved the previous strategy.
+
+Having said that we should still probably prefer the portfolio with the higher sharpe ratio, which seems to be the SP500.
+
+```{r}
+# setting table
+
+library(lubridate)
+Dates.3 <- seq(ymd("1963-03-01"), ymd("2020-02-01"), by = "months")
+datadate <- as.Date(x = integer(0), origin = "1963-03-01")
+for(i in 0:56) {
+datadate[(1+i*360):(i*360+360)] <- rep(Dates.3[(1+i*12):(i*12+12)], times =30)
+}
+Magic.Portfolio.3 <- cbind(datadate, LPERMNO)
+
+#magic formula portfolio left join Security Monthly
+Magic.Portfolio.merge.3 <- merge(x = Magic.Portfolio.3, y = dataMonthlyThick ,all.x = TRUE)
+
+#Replace NA with 0
+Magic.Portfolio.merge.3[is.na(Magic.Portfolio.merge.3)] <- 0
+
+#Generate portfolio returns for your magic formula portfolio
+p<-length(Magic.Portfolio.merge.3$datadate)
+Portfolio.returns.mean.3 <- numeric(p)
+P.r.m.3 <- numeric(683)
+for( i in 0:683)
+{
+Portfolio.returns.mean.3[(i+1)*30] <- mean(Magic.Portfolio.merge.3$trt1m[(i*30+1): ((i+1)*30)])
+}
+for( i in 0:683)
+{
+P.r.m.3[(i+1)] <- mean(Magic.Portfolio.merge.3$trt1m[(i*30+1): ((i+1)*30)])
+}
+Magic.Portfolio.merge.mean.3 <-cbind (Magic.Portfolio.merge.3, Portfolio.returns.mean.3)
+
+# line plot of your cumulated indexed magic formula portfolio returns
+Portfolio.3 <- return2index(av.ret = P.r.m.3)
+Portfolio.3 <- as.data.frame(Portfolio.3)
+caldt <- seq(ymd("1963-02-01"), ymd("2020-02-01"), by = "months")
+Portfolio.3 <- cbind(caldt, Portfolio.3)
+ggplot (Portfolio.3, aes(x=caldt, y = Portfolio.3 )) + geom_line()
+
+#Join SP 500 database to magic formula portfolio returns
+SP500.MagicPortfolio.3 <- merge(x = Portfolio.3, y = dataSP500Thick, all.x = TRUE)
+
+#Comparison line plot between cumulated indexed returns from the magic formula portfolio and S&P 500 returns 
+SP500index.3 <- return2index(av.ret = SP500.MagicPortfolio.3$vwretd[2:685])
+SP500.Magic.3 <- cbind(SP500.MagicPortfolio.3,  SP500index.3)
+p <-ggplot ( SP500.Magic.3, aes(x=caldt)) + geom_line(aes(y = Portfolio.3),color="darkred")+geom_line (aes(y =SP500index.3),color="darkblue")
+p + ggtitle("SP500 (b) VS Magic Portfolio (r) cumulated indexed returns (3 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+# annualized arithmetic mean, the annualized standard deviation, and sharpe ratio
+years <- seq(ymd("1963-03-01"), ymd("2019-03-01"), by = "years")
+SP500.monthly.3 <- SP500.MagicPortfolio.3$vwretd[2:685]
+annualized.arithmetic.mean.SP500.3 <- numeric(57)
+annualized.arithmetic.mean.Magic.3 <- numeric(57)
+annualized.st.dev.SP500.3<- numeric(57)
+annualized.st.dev.Magic.3<- numeric(57)
+annualized.sharpe.ratio.SP500.3<- numeric(57)
+annualized.sharpe.ratio.Magic.3<- numeric(57)
+for( i in 0:56)
+  {
+annualized.arithmetic.mean.SP500.3[i+1] <- mean(SP500.monthly.3[(1+(i*12)):((i+1)*12)])*12
+annualized.arithmetic.mean.Magic.3[i+1] <- mean(P.r.m.3[(1+(i*12)):((i+1)*12)])*12
+annualized.st.dev.SP500.3[i+1] <- sd(SP500.monthly.3[(1+i*12):((i+1)*12)])*sqrt(12)
+annualized.st.dev.Magic.3[i+1] <-  sd(P.r.m.3[(1+i*12):((i+1)*12)])*sqrt(12)
+annualized.sharpe.ratio.SP500.3[i+1] <- annualized.arithmetic.mean.SP500.3[i+1]/ annualized.st.dev.SP500.3[i+1]
+annualized.sharpe.ratio.Magic.3[i+1] <- annualized.arithmetic.mean.Magic.3[i+1]/annualized.st.dev.Magic.3[i+1]
+}
+
+annualized.arithmetic.mean.SP500.3 <- as.data.frame(annualized.arithmetic.mean.SP500.3)
+SP500vsMagic.3 <- cbind (years, annualized.arithmetic.mean.SP500.3, annualized.arithmetic.mean.Magic.3,annualized.st.dev.SP500.3, annualized.st.dev.Magic.3, annualized.sharpe.ratio.SP500.3, annualized.sharpe.ratio.Magic.3)
+
+Stats<- c(mean(SP500vsMagic$annualized.arithmetic.mean.SP500),
+                            mean( SP500vsMagic$annualized.arithmetic.mean.Magic),
+                            mean( SP500vsMagic$annualized.st.dev.SP500),
+                            mean( SP500vsMagic$annualized.st.dev.Magic),
+                            mean( SP500vsMagic$annualized.sharpe.ratio.SP500),
+                            mean( SP500vsMagic$annualized.sharpe.ratio.Magic))
+
+Stats<-as.data.frame(Stats)
+
+Stats.3 <- c(mean(SP500vsMagic.3$annualized.arithmetic.mean.SP500.3),
+                            mean( SP500vsMagic.3$annualized.arithmetic.mean.Magic.3),
+                            mean( SP500vsMagic.3$annualized.st.dev.SP500.3),
+                            mean( SP500vsMagic.3$annualized.st.dev.Magic.3),
+                            mean( SP500vsMagic.3$annualized.sharpe.ratio.SP500.3),
+                            mean( SP500vsMagic.3$annualized.sharpe.ratio.Magic.3))
+
+Stats.3 <- as.data.frame(Stats.3)
+
+Statistics <-cbind(Stats,Stats.3)
+Statistics
+
+r <-ggplot ( SP500vsMagic.3, aes(x=years)) + geom_line(aes(y = annualized.arithmetic.mean.Magic.3),color="darkred")+geom_line (aes(y = annualized.arithmetic.mean.SP500.3),color="darkblue")
+r + ggtitle("SP500 (b) VS Magic Portfolio (r) annualized arithmetic mean of returns (3 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+s <-ggplot ( SP500vsMagic.3, aes(x=years)) + geom_line(aes(y = annualized.st.dev.Magic.3),color="darkred")+geom_line (aes(y = annualized.st.dev.SP500.3),color="darkblue")
+s + ggtitle("SP500 (b) VS Magic Portfolio (r) annualized astandard deviation of returns (3 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+q <-ggplot ( SP500vsMagic.3, aes(x=years)) + geom_line(aes(y = annualized.sharpe.ratio.Magic.3),color="darkred")+geom_line (aes(y = annualized.sharpe.ratio.SP500.3),color="darkblue")
+q + ggtitle("SP500 (b) VS Magic Portfolio (r) annualized sharpe ratio (3 months lag)") +
+  xlab("Years") + ylab("SP500 VS Magic Portfolio")
+
+#  Percentage of months that the magic formula portfolio strategy outperformed the S&P 500
+percentage.Magic.outperforming.SP500.3 <-(sum(P.r.m.3 > SP500.monthly.3)/length(P.r.m.3))*100
+percentage.Magic.outperforming.SP500.3
+```
+
+
+
+
+-----------------------------------------------------------------------------------
+
+"Part II: Shiller PE as a Predictor of Returns"
+
+
+### 1. Load the Shiller PE Ratio by Month.csv le. 
+.
+```{r}
+dataS = read.csv("Shiller_PE_Ratio_by_Month.csv", header = TRUE)
+```
+
+### 2. Generate a date variable for the Shiller PE Ratio by Month database in the "thicken'd" date format and remove the original one.
+
+```{r}
+library(lubridate)
+Dates <- seq(ymd("1871-02-01"), ymd("2021-09-01"), by = "months")
+Dates <- rev(Dates)
+dataShiller <- dataS
+dataShiller$Date <- NULL
+DataShiller <-cbind(Dates, dataShiller)
+```
+
+### 3. Create a new column in the CRSP Index File on the SP 500 dataset that equals the cumulated indexed return of the S&P 500 (measured by the variable "vwretd", 1925-12-01 = 100 in the "thicken'd" date format).
+
+```{r}
+f<-length(dataSP500Thick$caldt)
+Sp500 <- numeric(f)
+Sp500[1] <- 100
+
+for( i in 2:f)
+{
+Sp500[i] <- Sp500[i-1]*(1+dataSP500Thick$vwretd[i])
+}
+Sp500CumRet <- numeric(f)
+for( i in 2:f)
+{
+Sp500CumRet [i] <- (Sp500[i]-Sp500[1])/Sp500[1]
+}
+DataSP500Index <-cbind (dataSP500Thick,Sp500,Sp500CumRet)
+```
+
+### 4. Create a new column in the CRSP Index File on the SP 500 dataset that at each point in time equals the index value 10 years ahead, i.e. "lead" the index value by 10 years. This measures at each point in time the future index value in 10 years.
+
+```{r}
+library(lubridate)
+Sp500_10Y <- numeric(f-120)
+for( i in 1:(f-120))
+{
+Sp500_10Y[i] <- Sp500[i+120]
+}
+caldt <- seq(ymd("1925-12-01"), ymd("2010-12-01"), by = "months")
+Sp_500_10Yd <-as.data.frame(Sp500_10Y)
+Sp500_10Yd <- cbind(caldt, Sp_500_10Yd)
+DataSP500_10Y <- merge(x = DataSP500Index, y = Sp500_10Yd, all = TRUE)
+```
+
+### 5. Create a new column in the CRSP Index File on the SP 500 dataset that measures the annualized geometric return of the index value today vs. in 10 years.
+
+```{r}
+Sp500_AGRet <- numeric(f)
+
+for( i in 1:(f))
+{
+Sp500_AGRet[i] <- (1+((Sp500_10Y[i] / Sp500[i])^(1/120) - 1))^12-1
+}
+DataSP500_AGRet <-cbind(DataSP500_10Y,Sp500_AGRet)
+```
+
+### 6. Join the Shiller PE Ratio by Month database to the CRSP Index File on the SP 500 database (CRSP Index File on the SP 500 left join Shiller PE Ratio by Month).
+
+```{r}
+DataPEMerged1 <- merge(x = DataSP500_AGRet, y = DataShiller, by.x = "caldt", by.y = "Dates", all.x = TRUE)
+```
+
+### 7. Select the Shiller PE as well as your constructed annualized geometric return variable and then remove rows with missing values. Why do we have rows with missing values?
+
+The missing values has been caused by the fact that the annualized geometric return variable needed the value of the SP500 10 years after the 2020-12-01, which were not comprehended, so after the 2010-12-01 AGR cannot be calculated.
+
+```{r}
+Data_PE_AGR <-DataPEMerged1
+Data_PE_AGR$vwretd <- NULL
+Data_PE_AGR$Sp500CumRet <- NULL
+Data_PE_AGR_NA<-na.omit(Data_PE_AGR)
+```
+
+### 8. Create a scatter plot (x axis = Shiller PE, y axis = Annualized Geometric Return) in base R and add a regression line to it.
+```{r}
+ShillerPE.SP500_AGRet.lm <- lm(Sp500_AGRet ~ Value, data = Data_PE_AGR_NA)
+summary(ShillerPE.SP500_AGRet.lm)
+plot (Data_PE_AGR_NA$Value, Data_PE_AGR_NA$Sp500_AGRet,  main="PE - Annualized Geometric Return Scatterplot", xlab="Shiller PE", ylab="Annualized Geometric Return", pch=20)
+abline(lm(Sp500_AGRet ~ Value, data = Data_PE_AGR_NA), col="red")
+```
+
+### 9. What is the R-squared of the regression (y = Annualized Geometric Return, x = Shiller PE)? What do you conclude?
+
+The R squared of the lm is: 0.4847776.
+The R-squared (R2) ranges from 0 to 1 and represents the proportion of variation in the outcome variable that can be explained by the model predictor variables.
+We can conclude that an R2 that is close to 0.5 indicates that a good proportion of the variability in the outcome can be explained by the regression model, but it also says that much of it still cannot be explained by taking into account only the Shiller Pe as regressor.
+
+```{r}
+print("The R squared of the lm is:")
+summary(ShillerPE.SP500_AGRet.lm)$r.squared
+```
+
+### 10. Based on the most recent value of the Shiller PE, what does this model predict the annualized future 10 year geometric return of the US stock market to be? What do you conclude?
+
+The most recent Shiller PE Value that we have is 39.12	(2021-09-01).
+According to the linear regression performed before (1925-2010),the annualized future 10 year geometric return of the US stock market should be -0.01507385.
+The fact that expectation is negative reflects the relatively high value of the Shiller PE; according to the Shiller model the stock market is currently "expensive", because for each dollar of earnings, we should pay a lot. So for longer time horizons this higher-than-average Shiller PE value imply lower-than-average long-term annual average returns (in this case negative!). 
+On the other hand the last 10 years (2010-2020) has seen the stock market skyrocketing in prices, and this in not taken into account in the linear regression that we have used for our estimates. 
+If we perform the same prediction exercise to "predict" the last ten years (2010-2020) annualized geometric return, we can see how the model underestimate the annualized 10 year geometric return observed in the last ten years (0.1394265 (Observed) vs 0.0760224 (predicted)). 
+So probably due to the fact that we are performing a regression in a span of time too big and far from our days and that the stock market in these times is overperforming the model's predictions, our prediction will underestimate the annualized 10 year future geometric return of the market. But, since the model has been a good proxy in the last century to estimate the AGR of the stock market, we should anyway expect a period of lower profits than the last decade.
+
+```{r}
+RecentPE <- DataShiller[1,2]
+print(RecentPE)
+alpha <- summary(ShillerPE.SP500_AGRet.lm)$coefficients[1,1]
+print(alpha)
+beta <- summary(ShillerPE.SP500_AGRet.lm)$coefficients[2,1]
+print(beta)
+PredictedAGR = alpha + beta*RecentPE
+print(PredictedAGR)
+
+PredictedAGRh = alpha + beta*Data_PE_AGR_NA$Value
+print(Data_PE_AGR_NA$Sp500_AGRet[1021])
+print(PredictedAGRh[1021])
+
+plot (Data_PE_AGR_NA$caldt, Data_PE_AGR_NA$Sp500_AGRet, type="l",col="red", main = "Predicted (g) vs Observed(r) annualized 10 year geometric return")
+lines(Data_PE_AGR_NA$caldt, PredictedAGRh,col="green")
+```
+
+### 11. Redo the above analysis with the modification that you start your analysis in 1995 (first data point is 1995-01-01). What is the value of the R-squared now? What is the current prediction of the annualized future 10 year geometric return? What do you conclude?
+
+The R squared of the lm is: 0.8850244.
+The R-squared (R2) ranges from 0 to 1 and represents the proportion of variation in the outcome variable that can be explained by the model predictor variables.
+We can conclude that an R2 that is close to 1 and significantly higher than the one of the "1925-2010" model, indicates that a huge proportion of the variability in the outcome can be explained by this new regression model; it also says that very little of it still cannot be explained by taking into account the Shiller Pe as regressor.
+The most recent Shiller PE Value that we have is 39.12	(2021-09-01).
+
+According to the linear regression performed (1995-2010),the annualized future 10 year geometric return of the US stock market should be -0.005701554.
+The fact that expectation is slightly negative reflects the relatively high value of the Shiller PE; according to the Shiller model the stock market is currently "expensive", because for each dollar of earnings, we should pay a lot. So for longer time horizons this higher-than-average Shiller PE value imply lower-than-average long-term annual average returns (in this case negative!). 
+But in this case the prediction is less severe.
+If we perform the same prediction exercise to "predict" the last ten years (2010-2020) annualized geometric return, we can see how the "recent model" underestimate less than the "1925-2010" model the annualized 10 year geometric return observed in the last ten years (0.1394265 (Observed) vs 0.1019507 (predicted)). 
+So probably due to the fact that we are performing a regression in a shorter span of time and that the stock market in recent times is offering generally high profits, our prediction will underestimate less than the previous model the annualized 10 year future geometric return of the market (we plotted this result to give a graphical idea). According to the new model we should anyway expect a period of lower profits than the last decade, but maybe we can be less pessimistic (given also the higher R squared of the "1995-2010" model).
+
+```{r}
+Data_PE_AGR_NA.1995 <- Data_PE_AGR_NA[830:1021, 1:5]
+
+ShillerPE.SP500_AGRet.lm.1995 <- lm(Sp500_AGRet ~ Value, data = Data_PE_AGR_NA.1995)
+summary(ShillerPE.SP500_AGRet.lm.1995)
+plot (Data_PE_AGR_NA.1995$Value, Data_PE_AGR_NA.1995$Sp500_AGRet,  main="PE - Annualized Geometric Return Scatterplot from 1995", xlab="Shiller PE", ylab="Annualized Geometric Return", pch=20)
+abline(lm(Sp500_AGRet ~ Value, data = Data_PE_AGR_NA.1995), col="red")
+
+print("The R squared (1995) of the lm is:")
+summary(ShillerPE.SP500_AGRet.lm.1995)$r.squared
+
+RecentPE.1995 <- DataShiller[1,2]
+print(RecentPE)
+alpha.1995 <- summary(ShillerPE.SP500_AGRet.lm.1995)$coefficients[1,1]
+print(alpha.1995)
+beta.1995 <- summary(ShillerPE.SP500_AGRet.lm.1995)$coefficients[2,1]
+print(beta.1995)
+PredictedAGR.1995 = alpha.1995 + beta.1995*RecentPE.1995
+print(PredictedAGR.1995)
+
+PredictedAGRh.1995 = alpha.1995 + beta.1995*Data_PE_AGR_NA.1995$Value
+print(Data_PE_AGR_NA.1995$Sp500_AGRet[192])
+print(PredictedAGRh.1995[192])
+
+plot (Data_PE_AGR_NA.1995$caldt, Data_PE_AGR_NA.1995$Sp500_AGRet, type="l",col="red", main = "Predicted (g) vs Observed(r) annualized 10 year geometric return (1995-2010)")
+lines(Data_PE_AGR_NA.1995$caldt, PredictedAGRh.1995,col="green")
+```
